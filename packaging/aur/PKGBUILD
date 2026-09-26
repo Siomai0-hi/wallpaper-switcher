@@ -8,8 +8,8 @@ arch=('any')
 url="https://github.com/Siomai0-hi/wallpaper-switcher"
 license=('MIT')
 depends=('rofi' 'plasma-workspace' 'zenity' 'file' 'libnotify')
-source=("wallpaper-switcher-$pkgver.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('a101ba3737d8d6d50575f97fe1482cc30353240ed5fdad6ba1dbf5419e95b682')
+source=("wallpaper-switcher-$pkgver.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/releases/download/v$pkgver/wallpaper-switcher-$pkgver.tar.gz")
+sha256sums=('b6f62c37791a90c3ddef313416cf12474d387d2988b0cb82ad2c2b473c1b79dc')
 
 package() {
   cd "$srcdir/wallpaper-switcher-$pkgver"
