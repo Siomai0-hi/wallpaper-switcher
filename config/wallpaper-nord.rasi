@@ -1,4 +1,4 @@
-/* Nord theme for rofi — Dark, Alt+Tab-тай төстэй grid switcher */
+/* Nord theme for rofi - dark, Alt+Tab-style grid switcher */
 
 * {
     background-color: transparent;

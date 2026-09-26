@@ -1,10 +1,8 @@
 [Desktop Entry]
 Type=Application
 Name=Wallpaper Switcher
-Name[mn]=Хананы зураг солих
 GenericName=Wallpaper picker
 Comment=Quick wallpaper picker with rofi (Nord grid, Alt+Tab like)
-Comment[mn]=Хананы зургийг хурдан солих (Nord grid пикер)
 Exec=wallpaper-pick
 Icon=preferences-desktop-wallpaper
 Terminal=false

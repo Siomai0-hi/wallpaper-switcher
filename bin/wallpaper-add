@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Шинэ хананы зураг нэмэх:  wallpaper-add <зураг файл> [өөр файл...]
+# Add new wallpapers:  wallpaper-add <image file> [more files...]
 set -euo pipefail
 
-[ $# -ge 1 ] || { echo "Хэрэглээ: wallpaper-add <зураг файл> [өөр файл...]"; exit 1; }
+[ $# -ge 1 ] || { echo "Usage: wallpaper-add <image file> [more files...]"; exit 1; }
 
 DEST="${WALLPAPER_DIR:-$HOME/.local/share/wallpapers}"
 mkdir -p "$DEST"
 
 for src in "$@"; do
-  [ -f "$src" ] || { echo "Файл олдсонгүй: $src"; continue; }
+  [ -f "$src" ] || { echo "File not found: $src"; continue; }
   case "$(file -b --mime-type "$src" 2>/dev/null || echo x)" in
     image/*) ;;
-    *) echo "Зураг биш файлыг алгаслаа: $src"; continue ;;
+    *) echo "Skipped non-image file: $src"; continue ;;
   esac
 
   base="${src##*/}"
@@ -25,6 +25,6 @@ for src in "$@"; do
     i=$((i + 1))
   done
   cp "$src" "$dest"
-  echo "Нэмэгдсэн: $dest"
+  echo "Added: $dest"
 done
-echo "\"wallpaper-pick\" нээвэл шинэ зураг харагдана"
+echo 'Open "wallpaper-pick" to see the new image'

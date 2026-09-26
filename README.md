@@ -93,7 +93,7 @@ Or add the **"Wallpaper Switcher"** launcher to your panel / assign a shortcut
 **In the picker:**
 
 - `↑ ↓ ← →` navigate · `Enter` apply · `Esc` / `Ctrl+Q` / `Ctrl+G` cancel
-- **"Нэмэх шинэ зураг..."** (Add) → pick image files (multi-select with `Ctrl`),
+- **"Add new wallpaper..."** → pick image files (multi-select with `Ctrl`),
   the grid refreshes automatically
 
 ### Cycle wallpapers

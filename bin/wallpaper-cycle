@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Хананы зургийг солих:  next | prev | random | <тоо>
+# Cycle wallpaper:  next | prev | random | <number>
 set -euo pipefail
 
 STATE="$HOME/.cache/wallpaper-cycle-idx"
@@ -11,7 +11,7 @@ mapfile -t IMGS < <(
           -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
 )
 if [ ${#IMGS[@]} -eq 0 ]; then
-  notify-send -a wallpaper -u critical "Wallpaper" "Зураг олдсонгүй" 2>/dev/null || true
+  notify-send -a wallpaper -u critical "Wallpaper" "No images found" 2>/dev/null || true
   exit 1
 fi
 N=${#IMGS[@]}
@@ -22,14 +22,14 @@ case "$mode" in
   next)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx + 1) % N )) ;;
   prev)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx - 1 + N) % N )) ;;
   *[!0-9]*) usage=1; idx=0 ;;
-  *)      idx=$((10#$mode % N)) ;;   # шууд дугаар
+  *)      idx=$((10#$mode % N)) ;;   # direct index
 esac
-[ -z "${usage:-}" ] || { echo "Хэрэглээ: wallpaper-cycle next|prev|random|<тоо>"; exit 1; }
+[ -z "${usage:-}" ] || { echo "Usage: wallpaper-cycle next|prev|random|<number>"; exit 1; }
 
 if /usr/bin/plasma-apply-wallpaperimage "${IMGS[$idx]}" 2>/dev/null; then
   echo "${IMGS[$idx]}"
-  notify-send -a wallpaper -i "${IMGS[$idx]}" "Wallpaper  $((idx+1))/$N" "${IMGS[$idx]##*/}" 2>/dev/null || true
+  notify-send -a wallpaper -i "${IMGS[$idx]}" "Wallpaper $((idx+1))/$N" "${IMGS[$idx]##*/}" 2>/dev/null || true
 else
-  echo "plasma-apply-wallpaperimage амжилтгүй" >&2
+  echo "plasma-apply-wallpaperimage failed" >&2
   exit 1
 fi
