@@ -11,6 +11,6 @@ pkgbase = wallpaper-switcher
 	depends = file
 	depends = libnotify
 	source = wallpaper-switcher-1.0.0.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/archive/refs/tags/v1.0.0.tar.gz
-	sha256sums = a2eb49a0b93cc70859d51536557a0dcbe95e07ff303c2cdcf21ae2c52c0bc665
+	sha256sums = a101ba3737d8d6d50575f97fe1482cc30353240ed5fdad6ba1dbf5419e95b682
 
 pkgname = wallpaper-switcher
