@@ -9,10 +9,10 @@ url="https://github.com/Siomai0-hi/wallpaper-switcher"
 license=('MIT')
 depends=('rofi' 'plasma-workspace' 'zenity' 'file' 'libnotify')
 source=("wallpaper-switcher-$pkgver.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('__CHECKSUM__')
+sha256sums=('a2eb49a0b93cc70859d51536557a0dcbe95e07ff303c2cdcf21ae2c52c0bc665')
 
 package() {
-  cd "$srcdir/wallpaper-switcher-v$pkgver"
+  cd "$srcdir/wallpaper-switcher-$pkgver"
 
   install -Dm755 bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add -t "$pkgdir/usr/bin"
   install -Dm644 config/wallpaper-nord.rasi "$pkgdir/usr/share/rofi/themes/wallpaper-nord.rasi"
