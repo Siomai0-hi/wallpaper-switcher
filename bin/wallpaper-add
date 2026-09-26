@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Шинэ хананы зураг нэмэх:  wallpaper-add <зураг файл> [өөр файл...]
-# Зургийг хананы зургийн санд хуулж, дараагийн wallpaper-pick дээр гаргана
 set -euo pipefail
 
 [ $# -ge 1 ] || { echo "Хэрэглээ: wallpaper-add <зураг файл> [өөр файл...]"; exit 1; }

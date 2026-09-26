@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Хананы зургийг хурдан солих: next | prev | random | <тоо>
-# Хэрэглээ:   wallpaper-cycle next      (дараагийн зураг)
-#             wallpaper-cycle prev      (өмнөх зураг)
-#             wallpaper-cycle random    (санамсаргүй)
+# Хананы зургийг солих:  next | prev | random | <тоо>
 set -euo pipefail
 
 STATE="$HOME/.cache/wallpaper-cycle-idx"

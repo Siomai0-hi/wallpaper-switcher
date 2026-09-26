@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Alt+Tab шиг хананы зураг сонгох — rofi (Nord)
-# Эхний мөр "Нэмэх шинэ зураг..." — шинэ зураг нэмэх (zenity файл сонголт)
+# Хананы зураг сонгох — rofi (Nord)
 set -euo pipefail
 IFS=$'\n'
 
 DEST="$HOME/.local/share/wallpapers"
 ADD_LABEL="Нэмэх шинэ зураг..."
 
-# Хуучин санамсаргүй үлдсэн rofi байвал давхар нээгдэхээс сэргийлэх
+# хуучин үлдсэн rofi-г kill хийх
 for p in $(pgrep -x rofi || true); do kill "$p" 2>/dev/null || true; done
 sleep 0.2
 
@@ -18,8 +17,7 @@ mapfile -t IMGS < <(
           -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
 )
 
-# --- Шинэ зураг нэмэх дэд функц ---
-add_file() {  # $1 = файл зам; зөвхөн зургийн файлыг сан руу хуулна
+add_file() {  # зургийн файлыг сан руу хуулна
   local src="$1" dest name ext base i
   [ -f "$src" ] || return 1
   case "$(file -b --mime-type "$src" 2>/dev/null || echo x)" in
@@ -41,7 +39,7 @@ add_file() {  # $1 = файл зам; зөвхөн зургийн файлыг �
   cp "$src" "$dest"
 }
 
-pick_file() {  # zenity-гээр файл сонгоод, сонгосон зургуудыг сан руу нэмнэ
+pick_file() {  # zenity-гээр файл сонгоод сан руу нэмнэ
   local files added=0 f
   files="$(zenity --file-selection --multiple \
     --title="Хананы зураг нэмэх" --filename="$HOME/Pictures/" \
@@ -59,7 +57,6 @@ pick_file() {  # zenity-гээр файл сонгоод, сонгосон зу�
   fi
 }
 
-# --- rofi жагсаалт: эхний мөр = нэмэх ---
 sel="$(
   {
     printf '%s\0icon\x1flist-add\n' "$ADD_LABEL"
@@ -70,7 +67,7 @@ sel="$(
 )"
 [ -n "$sel" ] || exit 0   # Esc дарвал өөрчлөхгүй
 
-# "Нэмэх" сонгогдвол: файл сонгох → нэмэх → жагсаалттайгаа дахин нээх
+# "Нэмэх" сонгогдвол файл нэмээд жагсаалтыг дахин нээх
 if [ "$sel" = "$ADD_LABEL" ]; then
   [ -d "$DEST" ] || mkdir -p "$DEST"
   pick_file
