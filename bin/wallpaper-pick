@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Alt+Tab шиг хананы зураг сонгох — rofi (Nord)
+# Эхний мөр "Нэмэх шинэ зураг..." — шинэ зураг нэмэх (zenity файл сонголт)
+set -euo pipefail
+IFS=$'\n'
+
+DEST="$HOME/.local/share/wallpapers"
+ADD_LABEL="Нэмэх шинэ зураг..."
+
+# Хуучин санамсаргүй үлдсэн rofi байвал давхар нээгдэхээс сэргийлэх
+for p in $(pgrep -x rofi || true); do kill "$p" 2>/dev/null || true; done
+sleep 0.2
+
+mapfile -t IMGS < <(
+  find "$HOME/Desktop" "$HOME/.local/share/backgrounds" "$HOME/.local/share/wallpapers" \
+       "$HOME/Pictures/wallpapers" "$HOME/Pictures/Wallpapers" -maxdepth 2 -type f \
+       \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
+          -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
+)
+
+# --- Шинэ зураг нэмэх дэд функц ---
+add_file() {  # $1 = файл зам; зөвхөн зургийн файлыг сан руу хуулна
+  local src="$1" dest name ext base i
+  [ -f "$src" ] || return 1
+  case "$(file -b --mime-type "$src" 2>/dev/null || echo x)" in
+    image/*) ;;
+    *)
+      notify-send -a wallpaper -u critical "Wallpaper" "Зураг биш файл алгасагдлаа: ${src##*/}" 2>/dev/null || true
+      return 1
+      ;;
+  esac
+  name="${src##*/}"
+  base="${name%.*}"; ext="${name##*.}"
+  [ "$base" = "$ext" ] && ext="img"
+  dest="$DEST/$name"
+  i=1
+  while [ -e "$dest" ]; do
+    dest="$DEST/$base ($i).$ext"
+    i=$((i + 1))
+  done
+  cp "$src" "$dest"
+}
+
+pick_file() {  # zenity-гээр файл сонгоод, сонгосон зургуудыг сан руу нэмнэ
+  local files added=0 f
+  files="$(zenity --file-selection --multiple \
+    --title="Хананы зураг нэмэх" --filename="$HOME/Pictures/" \
+    --file-filter="Зураг (jpg jpeg png webp bmp gif) | *.jpg *.jpeg *.png *.webp *.bmp *.gif" \
+    2>/dev/null || true)"
+  [ -z "$files" ] && return 0   # цуцалсан
+  IFS='|' read -ra arr <<<"$files"
+  IFS=$'\n'
+  for f in "${arr[@]}"; do
+    [ -n "$f" ] || continue
+    if add_file "$f"; then added=$((added + 1)); fi
+  done
+  if [ "$added" -gt 0 ]; then
+    notify-send -a wallpaper -t 3000 "Wallpaper" "$added зураг нэмэгдлээ" 2>/dev/null || true
+  fi
+}
+
+# --- rofi жагсаалт: эхний мөр = нэмэх ---
+sel="$(
+  {
+    printf '%s\0icon\x1flist-add\n' "$ADD_LABEL"
+    for f in "${IMGS[@]}"; do
+      printf '%s\0icon\x1f%s\n' "$(basename "$f")" "$f"
+    done
+  } | rofi -dmenu -i -p "Хананы зураг" -show-icons 2>/dev/null
+)"
+[ -n "$sel" ] || exit 0   # Esc дарвал өөрчлөхгүй
+
+# "Нэмэх" сонгогдвол: файл сонгох → нэмэх → жагсаалттайгаа дахин нээх
+if [ "$sel" = "$ADD_LABEL" ]; then
+  [ -d "$DEST" ] || mkdir -p "$DEST"
+  pick_file
+  exec "$0"
+fi
+
+picked=""
+for f in "${IMGS[@]}"; do
+  if [ "$(basename "$f")" = "$sel" ]; then picked="$f"; break; fi
+done
+if [ -n "$picked" ]; then
+  /usr/bin/plasma-apply-wallpaperimage "$picked" 2>/dev/null \
+    && notify-send -a wallpaper -i "$picked" "Wallpaper" "${picked##*/}" 2>/dev/null || true
+fi

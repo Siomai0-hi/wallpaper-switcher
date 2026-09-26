@@ -1,0 +1,103 @@
+/* Nord theme for rofi — Dark, Alt+Tab-тай төстэй grid switcher */
+
+* {
+    background-color: transparent;
+    text-color: #d8dee9;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+    spacing: 0px;
+}
+
+window {
+    background-color: rgba(46, 52, 64, 0.97);
+    border: 1px;
+    border-color: #4c566a;
+    border-radius: 14px;
+    padding: 14px;
+    width: 65%;
+    location: center;
+    anchor: center;
+    children: [ mainbox ];
+}
+
+mainbox {
+    padding: 6px;
+    background-color: transparent;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    enabled: false;
+}
+
+prompt {
+    text-color: #88c0d0;
+    font: "Noto Sans 18";
+}
+
+entry {
+    text-color: #eceff4;
+    font: "Noto Sans 18";
+    background-color: transparent;
+}
+
+listview {
+    lines: 4;
+    columns: 5;
+    spacing: 10px;
+    padding: 4px;
+    scrollbar: true;
+    dynamic: false;
+    background-color: transparent;
+}
+
+element {
+    background-color: transparent;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+element selected {
+    background-color: #4c566a;
+    border: 1px;
+    border-color: #88c0d0;
+    border-radius: 8px;
+}
+
+element-icon {
+    size: 130px;
+    background-color: #3b4252;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+element-text {
+    font: "Noto Sans 12";
+    text-color: #d8dee9;
+    padding: 2px 0 0 0;
+}
+
+element-text selected {
+    text-color: #eceff4;
+}
+
+message {
+    background-color: #3b4252;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+message-text {
+    text-color: #eceff4;
+}
+
+error-message {
+    background-color: #3b4252;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+error-message textbox {
+    text-color: #bf616a;
+}
