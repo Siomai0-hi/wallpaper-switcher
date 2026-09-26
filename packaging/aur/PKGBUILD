@@ -1,0 +1,21 @@
+# Maintainer: Siomai0-hi <davkadavka617@gmail.com>
+
+pkgname=wallpaper-switcher
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Nord-themed rofi wallpaper picker + cycle/add tools for KDE Plasma"
+arch=('any')
+url="https://github.com/Siomai0-hi/wallpaper-switcher"
+license=('MIT')
+depends=('rofi' 'plasma-workspace' 'zenity' 'file' 'libnotify')
+source=("wallpaper-switcher-$pkgver.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('__CHECKSUM__')
+
+package() {
+  cd "$srcdir/wallpaper-switcher-v$pkgver"
+
+  install -Dm755 bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add -t "$pkgdir/usr/bin"
+  install -Dm644 config/wallpaper-nord.rasi "$pkgdir/usr/share/rofi/themes/wallpaper-nord.rasi"
+  install -Dm644 config/wallpaper-pick.desktop "$pkgdir/usr/share/applications/wallpaper-pick.desktop"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

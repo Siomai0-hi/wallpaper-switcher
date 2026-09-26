@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['bin/**', 'install.sh', '.github/workflows/**']
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Lint scripts
+        run: shellcheck -S warning bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add install.sh

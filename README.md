@@ -6,6 +6,8 @@ Pick a wallpaper visually with a **Nord-themed grid** (Alt+Tab style), cycle wit
 terminal commands or hotkeys, and add new images directly from within the picker —
 no system settings needed.
 
+![CI](https://github.com/Siomai0-hi/wallpaper-switcher/actions/workflows/shellcheck.yml/badge.svg)
+
 ![Nord grid picker](https://raw.githubusercontent.com/Siomai0-hi/wallpaper-switcher/main/.github/picker.png)
 
 ## Features
@@ -56,6 +58,26 @@ If `~/.local/bin` is not in your `PATH`, add it (KDE Plasma has it by default):
 # ~/.config/environment.d/10-path.conf
 PATH=%h/.local/bin:$PATH
 ```
+
+## AUR
+
+On Arch, the package is on the AUR as `wallpaper-switcher`:
+
+```bash
+yay -S wallpaper-switcher     # or: paru -S wallpaper-switcher
+```
+
+or build it manually from the AUR repo:
+
+```bash
+git clone https://aur.archlinux.org/wallpaper-switcher.git
+cd wallpaper-switcher
+makepkg -si
+```
+
+The package installs to `/usr` (scripts, system theme, launcher); it depends on
+`rofi`, `plasma-workspace`, `zenity`, `file`, `libnotify`. Packaging sources live
+in `packaging/aur/`.
 
 ## Usage
 
@@ -111,16 +133,18 @@ bin/
   wallpaper-cycle    # next / prev / random / <index>
   wallpaper-add      # CLI image import
 config/
-  nord.rasi          # Nord theme for rofi
+  wallpaper-nord.rasi  # Nord theme for rofi (unique name, no clash with rofi-themes)
   config.rasi        # minimal rofi config (show-icons)
   wallpaper-pick.desktop
 install.sh
+.github/workflows/shellcheck.yml   # CI: shellcheck on every push/PR
+packaging/aur/                     # PKGBUILD + .SRCINFO for the AUR
 ```
 
 ## Customization
 
 - **Grid size / icon size** — edit `columns`, `lines`, `element-icon { size: … }`
-  in `config/nord.rasi`
+  in `config/wallpaper-nord.rasi`
 - **More folders** — add paths to the `find` command inside
   `bin/wallpaper-pick` / `bin/wallpaper-cycle`
 

@@ -16,7 +16,7 @@ mkdir -p "$BIN_DIR" "$CONFIG_DIR" "$THEME_DIR" "$APPLICATIONS_DIR"
 echo "Installing to $BIN_DIR ..."
 install -m755 bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add "$BIN_DIR/"
 install -m644 config/config.rasi "$CONFIG_DIR/config.rasi"
-install -m644 config/nord.rasi "$THEME_DIR/nord.rasi"
+install -m644 config/wallpaper-nord.rasi "$THEME_DIR/wallpaper-nord.rasi"
 
 # Generate the panel/menu launcher with an absolute Exec path
 sed "s|Exec=wallpaper-pick|Exec=$BIN_DIR/wallpaper-pick|" \
@@ -33,7 +33,7 @@ echo "  $BIN_DIR/wallpaper-pick"
 echo "  $BIN_DIR/wallpaper-cycle"
 echo "  $BIN_DIR/wallpaper-add"
 echo "  $CONFIG_DIR/config.rasi"
-echo "  $THEME_DIR/nord.rasi"
+echo "  $THEME_DIR/wallpaper-nord.rasi"
 echo "  $APPLICATIONS_DIR/wallpaper-pick.desktop"
 echo
 echo "Usage:"
