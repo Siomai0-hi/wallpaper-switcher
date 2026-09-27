@@ -1,5 +1,5 @@
 pkgbase = wallpaper-switcher
-	pkgdesc = Nord-themed rofi wallpaper picker + cycle/add tools (multi-DE)
+	pkgdesc = Nord-themed rofi wallpaper picker + cycle/fav/rotate tools (multi-DE)
 	pkgver = 1.0.0
 	pkgrel = 1
 	url = https://github.com/Siomai0-hi/wallpaper-switcher
@@ -10,7 +10,8 @@ pkgbase = wallpaper-switcher
 	depends = file
 	depends = libnotify
 	optdepends = plasma-workspace: apply wallpapers on KDE Plasma
-	optdepends = python-pillow: filename captions in the picker grid
+	optdepends = python-pillow: filename captions + thumbnails in the picker grid
+	optdepends = pywal: colorscheme extraction from the wallpaper (PYWAL=1)
 	source = wallpaper-switcher-1.0.0.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/releases/download/v1.0.0/wallpaper-switcher-1.0.0.tar.gz
 	sha256sums = b6f62c37791a90c3ddef313416cf12474d387d2988b0cb82ad2c2b473c1b79dc
 

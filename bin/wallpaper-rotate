@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Auto wallpaper rotation.
+#   wallpaper-rotate          apply a random wallpaper (timer ExecStart)
+#   wallpaper-rotate on|off   enable/disable the systemd --user timer
+#   wallpaper-rotate status   report whether rotation is active
+#
+# Rotation is driven by a systemd --user timer, never by a poll loop, so
+# nothing keeps running between rotations (0% CPU when idle).
+set -euo pipefail
+
+BIN_DIR="$(cd "$(dirname "$0")" && pwd)"   # wallpaper-cycle lives in the same dir
+
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher"
+CFG="$CONF_DIR/config"
+UNIT="wallpaper-rotate.timer"
+
+[ -f "$CFG" ] && . "$CFG"   # FAV_ONLY=1 rotates favourites only
+
+case "${1:-run}" in
+  on)
+    systemctl --user enable --now "$UNIT" >/dev/null 2>&1 || true
+    systemctl --user start "$UNIT" >/dev/null 2>&1 || true
+    timeout 3 notify-send -a wallpaper -t 3000 "Wallpaper" \
+      "Auto-rotate ON (every ${ROT_INTERVAL:-30} min)" 2>/dev/null || true
+    ;;
+  off)
+    systemctl --user disable --now "$UNIT" >/dev/null 2>&1 || true
+    systemctl --user stop "$UNIT" >/dev/null 2>&1 || true
+    timeout 3 notify-send -a wallpaper -t 3000 "Wallpaper" "Auto-rotate OFF" 2>/dev/null || true
+    ;;
+  status)
+    systemctl --user is-active "$UNIT" 2>/dev/null || true
+    ;;
+  run|*)
+    if [ "${FAV_ONLY:-0}" = 1 ]; then
+      "$BIN_DIR/wallpaper-cycle" fav
+    else
+      "$BIN_DIR/wallpaper-cycle" random
+    fi
+    ;;
+esac

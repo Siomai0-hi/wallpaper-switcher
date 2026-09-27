@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Favourites manager for wallpaper-switcher.
+#   wallpaper-fav list
+#   wallpaper-fav add <image> | remove <image> | toggle <image>
+# A plain text list (one absolute path per line); the picker's "Favorites"
+# view and `wallpaper-cycle fav` both read it.
+set -euo pipefail
+
+FAV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher/favorites"
+mkdir -p "${FAV_FILE%/*}"
+
+cmd="${1:-list}"
+shift || true   # tolerate `wallpaper-fav` with no arguments
+
+case "$cmd" in
+  list)
+    [ -f "$FAV_FILE" ] && cat "$FAV_FILE"
+    ;;
+  add)
+    [ -n "${1:-}" ] || { echo "usage: wallpaper-fav add <image>" >&2; exit 1; }
+    [ -f "$1" ] || { echo "no such file: $1" >&2; exit 1; }
+    grep -qxF "$1" "$FAV_FILE" 2>/dev/null || echo "$1" >> "$FAV_FILE"
+    echo "favourited: $1"
+    ;;
+  remove)
+    [ -n "${1:-}" ] || { echo "usage: wallpaper-fav remove <image>" >&2; exit 1; }
+    if [ -f "$FAV_FILE" ]; then
+      # whole-line fixed-string filter: no regex, works with any path
+      grep -vxF "$1" "$FAV_FILE" > "$FAV_FILE.tmp" || true
+      mv "$FAV_FILE.tmp" "$FAV_FILE"
+    fi
+    echo "unfavourited: $1"
+    ;;
+  toggle)
+    [ -n "${1:-}" ] || { echo "usage: wallpaper-fav toggle <image>" >&2; exit 1; }
+    # recurse via $0 so it also works when ~/.local/bin is not on PATH
+    if grep -qxF "$1" "$FAV_FILE" 2>/dev/null; then
+      "$0" remove "$1"
+    else
+      "$0" add "$1"
+    fi
+    ;;
+  *)
+    echo "usage: wallpaper-fav list | add <image> | remove <image> | toggle <image>" >&2
+    exit 1
+    ;;
+esac

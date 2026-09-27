@@ -2,4 +2,6 @@
 
 configuration {
     show-icons: true;
+    // Ctrl+R applies a random wallpaper immediately (exit code 10 in dmenu)
+    kb-custom-1: "Control+r";
 }

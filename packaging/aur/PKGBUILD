@@ -3,21 +3,31 @@
 pkgname=wallpaper-switcher
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="Nord-themed rofi wallpaper picker + cycle/add tools (multi-DE)"
+pkgdesc="Nord-themed rofi wallpaper picker + cycle/fav/rotate tools (multi-DE)"
 arch=('any')
 url="https://github.com/Siomai0-hi/wallpaper-switcher"
 license=('MIT')
 depends=('rofi' 'zenity' 'file' 'libnotify')
 optdepends=('plasma-workspace: apply wallpapers on KDE Plasma'
-            'python-pillow: filename captions in the picker grid')
+            'python-pillow: filename captions + thumbnails in the picker grid'
+            'pywal: colorscheme extraction from the wallpaper (PYWAL=1)')
 source=("wallpaper-switcher-$pkgver.tar.gz::https://github.com/Siomai0-hi/wallpaper-switcher/releases/download/v$pkgver/wallpaper-switcher-$pkgver.tar.gz")
 sha256sums=('b6f62c37791a90c3ddef313416cf12474d387d2988b0cb82ad2c2b473c1b79dc')
 
 package() {
   cd "$srcdir/wallpaper-switcher-$pkgver"
 
-  install -Dm755 bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add -t "$pkgdir/usr/bin"
-  install -Dm644 config/wallpaper-nord.rasi "$pkgdir/usr/share/rofi/themes/wallpaper-nord.rasi"
+  install -Dm755 bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add \
+               bin/wallpaper-fav bin/wallpaper-rotate -t "$pkgdir/usr/bin"
+  install -Dm644 config/wallpaper-nord.rasi config/wallpaper-nord-list.rasi \
+               -t "$pkgdir/usr/share/rofi/themes"
   install -Dm644 config/wallpaper-pick.desktop "$pkgdir/usr/share/applications/wallpaper-pick.desktop"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # systemd --user units; the /usr install resolves the binary via PATH
+  install -Dm644 config/wallpaper-rotate.timer -t "$pkgdir/usr/lib/systemd/user"
+  sed 's|%h/.local/bin/wallpaper-rotate|/usr/bin/wallpaper-rotate|' \
+      config/wallpaper-rotate.service \
+      > "$srcdir/wallpaper-rotate.service"
+  install -Dm644 "$srcdir/wallpaper-rotate.service" "$pkgdir/usr/lib/systemd/user/wallpaper-rotate.service"
 }

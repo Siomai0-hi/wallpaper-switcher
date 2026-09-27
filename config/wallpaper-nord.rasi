@@ -27,8 +27,10 @@ mainbox {
     children: [ inputbar, listview ];
 }
 
+/* the inputbar doubles as the search box: typing filters the grid live */
 inputbar {
-    enabled: false;
+    enabled: true;
+    padding: 2px 6px 10px 6px;
 }
 
 prompt {
@@ -40,6 +42,7 @@ entry {
     text-color: #eceff4;
     font: "Noto Sans 18";
     background-color: transparent;
+    placeholder: "Search images…";
 }
 
 listview {

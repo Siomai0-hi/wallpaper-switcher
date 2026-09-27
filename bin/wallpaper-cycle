@@ -1,12 +1,19 @@
 #!/usr/bin/env bash
-# Cycle wallpaper:  next | prev | random | <number>
+# Cycle wallpaper:  next | prev | random | fav | <number>   [monitor]
+# Note: notify-send calls are wrapped in `timeout 3` so a stuck notification
+# daemon can never block the cycle command.
 set -euo pipefail
 
 STATE="$HOME/.cache/wallpaper-cycle-idx"
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher"
+CFG="$CONF_DIR/config"
+FAV_FILE="$CONF_DIR/favorites"
+
+[ -f "$CFG" ] && . "$CFG"   # optional PYWAL / MONITOR / FAV_ONLY settings
 
 # apply the image on whatever desktop session is running
-apply_wallpaper() {
-  local de="${XDG_CURRENT_DESKTOP:-}" img="$1"
+apply_wallpaper() {  # $1 image, $2 optional monitor name (swww only)
+  local de="${XDG_CURRENT_DESKTOP:-}" img="$1" mon="${2:-}"
   case "$de" in
     *GNOME*|*ubuntu*|*Cinnamon*|*Budgie*|*Pantheon*)
       command -v gsettings >/dev/null || return 1
@@ -19,10 +26,21 @@ apply_wallpaper() {
       xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-style -s 5 2>/dev/null || true
       return ;;
   esac
-  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
-    hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
-    hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
-    return
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    # swww gives a smooth crossfade; fall back to plain hyprpaper
+    if command -v swww >/dev/null; then
+      if [ -n "$mon" ]; then
+        swww img "$img" -o "$mon" --transition-fade 2>/dev/null || return 1
+      else
+        swww img "$img" --transition-fade 2>/dev/null || return 1
+      fi
+      return
+    fi
+    if command -v hyprctl >/dev/null; then
+      hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
+      hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
+      return
+    fi
   fi
   if [ -n "${SWAYSOCK:-}" ] && command -v swaybg >/dev/null; then
     pkill -x swaybg 2>/dev/null || true
@@ -39,6 +57,15 @@ apply_wallpaper() {
   return 1
 }
 
+# optional pywal colorscheme extraction (PYWAL=1 in config); runs in background
+maybe_pywal() {
+  [ "${PYWAL:-0}" = 1 ] || return 0
+  command -v wal >/dev/null || return 0
+  ( wal -i "$1" -n -q >/dev/null 2>&1 &&
+      timeout 3 notify-send -a wallpaper -t 3000 "Pywal" "Colorscheme updated" 2>/dev/null || true ) &
+  disown
+}
+
 mapfile -t IMGS < <(
   find "$HOME/Desktop" "$HOME/.local/share/backgrounds" "$HOME/.local/share/wallpapers" \
        "$HOME/Pictures/wallpapers" "$HOME/Pictures/Wallpapers" -maxdepth 2 -type f \
@@ -46,24 +73,44 @@ mapfile -t IMGS < <(
           -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
 )
 if [ ${#IMGS[@]} -eq 0 ]; then
-  notify-send -a wallpaper -u critical "Wallpaper" "No images found" 2>/dev/null || true
+  timeout 3 notify-send -a wallpaper -u critical "Wallpaper" "No images found" 2>/dev/null || true
   exit 1
 fi
 N=${#IMGS[@]}
 
 mode="${1:-next}"
-case "$mode" in
-  random) idx=$((RANDOM % N)) ;;
-  next)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx + 1) % N )) ;;
-  prev)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx - 1 + N) % N )) ;;
-  *[!0-9]*) usage=1; idx=0 ;;
-  *)      idx=$((10#$mode % N)) ;;   # direct index
-esac
-[ -z "${usage:-}" ] || { echo "Usage: wallpaper-cycle next|prev|random|<number>"; exit 1; }
+mon="${2:-${MONITOR:-}}"   # explicit monitor argument wins over the config value
 
-if apply_wallpaper "${IMGS[$idx]}"; then
-  echo "${IMGS[$idx]}"
-  notify-send -a wallpaper -i "${IMGS[$idx]}" "Wallpaper $((idx+1))/$N" "${IMGS[$idx]##*/}" 2>/dev/null || true
+img=""
+case "$mode" in
+  random) idx=$((RANDOM % N)); img="${IMGS[$idx]}" ;;
+  next)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx + 1) % N )); img="${IMGS[$idx]}" ;;
+  prev)   idx=$(cat "$STATE" 2>/dev/null || echo 0); idx=$(( (idx - 1 + N) % N )); img="${IMGS[$idx]}" ;;
+  fav)
+    # random favourite: collect IMGS indices that are in the favourites file
+    FAVS=()
+    for i in "${!IMGS[@]}"; do
+      grep -qxF "${IMGS[$i]}" "$FAV_FILE" 2>/dev/null && FAVS+=("$i")
+    done
+    if [ ${#FAVS[@]} -eq 0 ]; then
+      timeout 3 notify-send -a wallpaper -u critical "Wallpaper" \
+        "No favorites yet — wallpaper-fav add <image>" 2>/dev/null || true
+      exit 1
+    fi
+    idx="${FAVS[$((RANDOM % ${#FAVS[@]}))]}"
+    img="${IMGS[$idx]}"
+    ;;
+  *[!0-9]*)
+    echo "Usage: wallpaper-cycle next|prev|random|fav|<number> [monitor]" >&2
+    exit 1
+    ;;
+  *)      idx=$((10#$mode % N)); img="${IMGS[$idx]}" ;;   # direct index
+esac
+
+if apply_wallpaper "$img" "$mon"; then
+  echo "$img"
+  timeout 3 notify-send -a wallpaper -i "$img" "Wallpaper $(( ${idx:-0} + 1))/$N" "${img##*/}" 2>/dev/null || true
+  maybe_pywal "$img"
 else
   echo "failed to apply wallpaper" >&2
   exit 1

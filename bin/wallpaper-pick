@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
 # Pick a wallpaper - rofi (Nord)
+# Note: every notify-send is wrapped in `timeout 3` so a stuck notification
+# daemon can never freeze the picker after a wallpaper was applied.
 set -euo pipefail
 IFS=$'\n'
 
-DEST="$HOME/.local/share/wallpapers"
-ADD_LABEL="Add new wallpaper..."
-THUMB_SIZE=160
-THUMB_DIR="$HOME/.cache/wallpaper-pick/thumbs"
+BIN_DIR="$(cd "$(dirname "$0")" && pwd)"   # sibling scripts live in the same dir
 
-# apply the image on whatever desktop session is running
+DEST="$HOME/.local/share/wallpapers"
+CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher"
+CFG="$CONF_DIR/config"
+FAV_FILE="$CONF_DIR/favorites"
+FAVMODE_FILE="$CONF_DIR/favmode"
+THUMB_DIR="$HOME/.cache/wallpaper-pick/thumbs"
+CTRL_DIR="$HOME/.cache/wallpaper-pick/ctrl"
+THUMB_SIZE=160
+ADD_LABEL="Add wallpaper"
+SHUF_LABEL="Shuffle"
+FAV_LABEL="Favorites"
+ALL_LABEL="All images"
+ROT_ON_LABEL="Auto-rotate: On"
+ROT_OFF_LABEL="Auto-rotate: Off"
+
+mkdir -p "$CONF_DIR" "$CTRL_DIR"
+[ -f "$CFG" ] && . "$CFG"
+
+# --- apply the image on whatever desktop session is running ------------------
+# Backends by preference: swww (smooth fade on Hyprland), hyprpaper,
+# swaybg, plasma-apply (KDE), feh; GNOME/XFCE use their own tools.
 apply_wallpaper() {
-  local de="${XDG_CURRENT_DESKTOP:-}" img="$1"
+  local img="$1" mon="${2:-}" de="${XDG_CURRENT_DESKTOP:-}"
   case "$de" in
     *GNOME*|*ubuntu*|*Cinnamon*|*Budgie*|*Pantheon*)
       command -v gsettings >/dev/null || return 1
@@ -23,10 +42,21 @@ apply_wallpaper() {
       xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-style -s 5 2>/dev/null || true
       return ;;
   esac
-  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
-    hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
-    hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
-    return
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
+    if command -v swww >/dev/null; then
+      # smooth crossfade; -o targets one monitor when requested
+      if [ -n "$mon" ]; then
+        swww img "$img" -o "$mon" --transition-fade 2>/dev/null || return 1
+      else
+        swww img "$img" --transition-fade 2>/dev/null || return 1
+      fi
+      return
+    fi
+    if command -v hyprctl >/dev/null; then
+      hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
+      hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
+      return
+    fi
   fi
   if [ -n "${SWAYSOCK:-}" ] && command -v swaybg >/dev/null; then
     pkill -x swaybg 2>/dev/null || true
@@ -43,6 +73,47 @@ apply_wallpaper() {
   return 1
 }
 
+# --- monitor detection --------------------------------------------------------
+monitors() {  # per-monitor names, one per line (Hyprland / X11)
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
+    hyprctl monitors -j 2>/dev/null | python3 -c 'import json,sys
+for m in json.load(sys.stdin): print(m["name"])' 2>/dev/null || true
+  elif [ -n "${DISPLAY:-}" ] && command -v xrandr >/dev/null; then
+    xrandr --listmonitors 2>/dev/null | awk 'NR>1 {print $4}' || true
+  fi
+}
+
+# --- optional pywal colorscheme extraction (PYWAL=1 in config) ----------------
+maybe_pywal() {  # runs in the background; the app never blocks on it
+  [ "${PYWAL:-0}" = 1 ] || return 0
+  command -v wal >/dev/null || return 0
+  ( wal -i "$1" -n -q >/dev/null 2>&1 &&
+      timeout 3 notify-send -a wallpaper -t 3000 "Pywal" "Colorscheme updated" 2>/dev/null || true ) &
+  disown
+}
+
+apply_one() {  # apply + notify + pywal; asks for a monitor when >1 connected
+  local img="$1" mons target
+  if [ -n "${MONITOR:-}" ]; then
+    apply_wallpaper "$img" "$MONITOR" || return 1
+  else
+    mons="$(monitors | sed '/^$/d')"
+    if [ "$(printf '%s' "$mons" | grep -c . 2>/dev/null || true)" -le 1 ]; then
+      apply_wallpaper "$img" || return 1
+    else
+      target="$(printf 'All monitors\n%s\n' "$mons" |
+        rofi -dmenu -i -p "Apply to" -theme wallpaper-nord-list 2>/dev/null || true)"
+      if [ -z "$target" ] || [ "$target" = "All monitors" ]; then
+        apply_wallpaper "$img" || return 1
+      else
+        apply_wallpaper "$img" "$target" || return 1
+      fi
+    fi
+  fi
+  timeout 3 notify-send -a wallpaper -i "$img" "Wallpaper" "${img##*/}" 2>/dev/null || true
+  maybe_pywal "$img"
+}
+
 # kill any stale rofi from previous runs
 for p in $(pgrep -x rofi || true); do kill "$p" 2>/dev/null || true; done
 sleep 0.2
@@ -54,7 +125,10 @@ mapfile -t IMGS < <(
           -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
 )
 
-# cached thumbnails with the filename baked in (needs python3 + Pillow)
+# --- one-shot thumbnail pass --------------------------------------------------
+# A cached square thumbnail per image has the filename baked in at the bottom.
+# Full-size images are decoded only when the cache is cold (mtime check); from
+# then on everything is read from disk, so RAM/CPU stay flat between launches.
 THUMBS=0
 if [ ${#IMGS[@]} -gt 0 ] && python3 -c 'import PIL' 2>/dev/null; then
   [ -d "$THUMB_DIR" ] || mkdir -p "$THUMB_DIR"
@@ -81,10 +155,15 @@ for path in sys.argv[3:]:
     out = os.path.join(cache, key + ".png")
     try:
         if os.path.getmtime(out) >= os.path.getmtime(path):
-            continue
+            continue                      # cache hit: skip decoding entirely
     except OSError:
         pass
-    im = Image.open(path).convert("RGB")
+    im = Image.open(path)
+    try:
+        im.draft("RGB", (size, size))     # decode only ~thumbnail resolution
+    except Exception:
+        pass
+    im = im.convert("RGB")
     w, h = im.size
     s = min(w, h)
     im = im.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2))
@@ -106,12 +185,58 @@ PY
   fi
 fi
 
-thumb_of() {  # cached thumbnail path (or the file itself without Pillow)
+thumb_of() {  # cached thumbnail path, or the file itself without Pillow
   local f="$1" key
   [ "$THUMBS" = 1 ] || { echo "$f"; return; }
   key=$(printf '%s' "$f" | sha256sum | cut -c1-16)
   echo "$THUMB_DIR/$key.png"
 }
+
+# --- labelled action tiles, rendered once and cached --------------------------
+make_ctrl() {  # solid tile with a centred label (kept off-screen until needed)
+  local slug="$1" label="$2"
+  local out="$CTRL_DIR/$slug.png"
+  [ -f "$out" ] && [ "$out" -nt "$0" ] && { echo "$out"; return; }
+  python3 - "$out" "$label" <<'PY' 2>/dev/null || { echo "$out"; return; }
+import os, sys
+from PIL import Image, ImageDraw, ImageFont
+
+out, label = sys.argv[1], sys.argv[2]
+size = 160
+font = None
+for p in ("/usr/share/fonts/noto/NotoSans-Regular.ttf",
+          "/usr/share/fonts/TTF/DejaVuSans.ttf",
+          "/usr/share/fonts/dejavu/DejaVuSans.ttf"):
+    if os.path.exists(p):
+        font = ImageFont.truetype(p, max(16, size // 9))
+        break
+if font is None:
+    font = ImageFont.load_default(size)
+im = Image.new("RGB", (size, size), (59, 66, 82))   # Nord tile background
+d = ImageDraw.Draw(im)
+while font.getlength(label) > size - 24 and len(label) > 1:
+    label = label[:-1]                    # keep the label on one line
+d.text((size // 2, size // 2), label, font=font, fill=(236, 239, 244), anchor="mm")
+im.save(out)
+PY
+  echo "$out"
+}
+
+# --- auto-rotate (systemd --user timer) + favourites view state ---------------
+ROT_ON=0
+if [ -f "$HOME/.config/systemd/user/wallpaper-rotate.timer" ]; then
+  systemctl --user is-active wallpaper-rotate.timer >/dev/null 2>&1 && ROT_ON=1
+fi
+FAVMODE=0
+[ -f "$FAVMODE_FILE" ] && FAVMODE=1
+
+SHOWN=()   # images listed in the grid (all, or favourites only)
+for f in "${IMGS[@]}"; do
+  if [ "$FAVMODE" = 1 ]; then
+    grep -qxF "$f" "$FAV_FILE" 2>/dev/null || continue
+  fi
+  SHOWN+=("$f")
+done
 
 add_file() {  # copy an image into the library
   local src="$1" dest name ext base i
@@ -119,7 +244,7 @@ add_file() {  # copy an image into the library
   case "$(file -b --mime-type "$src" 2>/dev/null || echo x)" in
     image/*) ;;
     *)
-      notify-send -a wallpaper -u critical "Wallpaper" "Not an image, skipped: ${src##*/}" 2>/dev/null || true
+      timeout 3 notify-send -a wallpaper -u critical "Wallpaper" "Not an image, skipped: ${src##*/}" 2>/dev/null || true
       return 1
       ;;
   esac
@@ -149,33 +274,67 @@ pick_file() {  # pick files via zenity and add them to the library
     if add_file "$f"; then added=$((added + 1)); fi
   done
   if [ "$added" -gt 0 ]; then
-    notify-send -a wallpaper -t 3000 "Wallpaper" "Added $added image(s)" 2>/dev/null || true
+    timeout 3 notify-send -a wallpaper -t 3000 "Wallpaper" "Added $added image(s)" 2>/dev/null || true
   fi
 }
 
-sel="$(
-  {
-    printf '%s\0icon\x1flist-add\n' "$ADD_LABEL"
-    for f in "${IMGS[@]}"; do
-      printf '%s\0icon\x1f%s\n' "$(basename "$f")" "$(thumb_of "$f")"
-    done
-  } | rofi -dmenu -i -p "Wallpaper" -show-icons 2>/dev/null
-)"
-[ -n "$sel" ] || exit 0   # Esc = exit without changing
-
-# "Add" chosen: add files, reopen with the updated list
-if [ "$sel" = "$ADD_LABEL" ]; then
-  [ -d "$DEST" ] || mkdir -p "$DEST"
-  pick_file
-  exec "$0"
-fi
-
-picked=""
-for f in "${IMGS[@]}"; do
-  if [ "$(basename "$f")" = "$sel" ]; then picked="$f"; break; fi
-done
-if [ -n "$picked" ]; then
-  if apply_wallpaper "$picked"; then
-    notify-send -a wallpaper -i "$picked" "Wallpaper" "${picked##*/}" 2>/dev/null || true
+# --- grid ---------------------------------------------------------------------
+gen_grid() {
+  printf '%s\0icon\x1f%s\n' "$ADD_LABEL" "$(make_ctrl add "$ADD_LABEL")"
+  if [ ${#IMGS[@]} -gt 0 ]; then
+    printf '%s\0icon\x1f%s\n' "$SHUF_LABEL" "$(make_ctrl shuffle "$SHUF_LABEL")"
   fi
+  if [ "$FAVMODE" = 1 ]; then
+    printf '%s\0icon\x1f%s\n' "$ALL_LABEL" "$(make_ctrl all "$ALL_LABEL")"
+  else
+    printf '%s\0icon\x1f%s\n' "$FAV_LABEL" "$(make_ctrl fav "$FAV_LABEL")"
+  fi
+  if [ "$ROT_ON" = 1 ]; then
+    printf '%s\0icon\x1f%s\n' "$ROT_ON_LABEL" "$(make_ctrl auto "$ROT_ON_LABEL")"
+  else
+    printf '%s\0icon\x1f%s\n' "$ROT_OFF_LABEL" "$(make_ctrl autof "$ROT_OFF_LABEL")"
+  fi
+  for f in "${SHOWN[@]}"; do
+    printf '%s\0icon\x1f%s\n' "$(basename "$f")" "$(thumb_of "$f")"
+  done
+}
+
+if sel="$(gen_grid | rofi -dmenu -i -p "Wallpaper" -show-icons 2>/dev/null)"; then
+  rc=0
+else
+  rc=$?   # 1 = cancelled, 10 = kb-custom-1 (Ctrl+R -> random apply)
 fi
+[ -n "$sel" ] || exit 0
+
+if [ "$rc" -eq 10 ] && [ ${#IMGS[@]} -gt 0 ]; then   # Ctrl+R: apply a random image
+  apply_one "${IMGS[$((RANDOM % ${#IMGS[@]}))]}" ||
+    timeout 3 notify-send -a wallpaper -u critical "Wallpaper" "Failed to apply wallpaper" 2>/dev/null || true
+  exit 0
+fi
+
+case "$sel" in
+  "$ADD_LABEL")
+    [ -d "$DEST" ] || mkdir -p "$DEST"
+    pick_file
+    exec "$0" ;;
+  "$SHUF_LABEL")
+    apply_one "${IMGS[$((RANDOM % ${#IMGS[@]}))]}" ||
+      timeout 3 notify-send -a wallpaper -u critical "Wallpaper" "Failed to apply wallpaper" 2>/dev/null || true
+    ;;
+  "$FAV_LABEL"|"$ALL_LABEL")
+    if [ "$FAVMODE" = 1 ]; then rm -f "$FAVMODE_FILE"; else : > "$FAVMODE_FILE"; fi
+    exec "$0" ;;
+  "$ROT_ON_LABEL"|"$ROT_OFF_LABEL")
+    if [ "$ROT_ON" = 1 ]; then "$BIN_DIR/wallpaper-rotate" off; else "$BIN_DIR/wallpaper-rotate" on; fi
+    exec "$0" ;;
+  *)
+    picked=""
+    for f in "${SHOWN[@]}"; do
+      if [ "$(basename "$f")" = "$sel" ]; then picked="$f"; break; fi
+    done
+    if [ -n "$picked" ]; then
+      apply_one "$picked" ||
+        timeout 3 notify-send -a wallpaper -u critical "Wallpaper" "Failed to apply wallpaper" 2>/dev/null || true
+    fi
+    ;;
+esac

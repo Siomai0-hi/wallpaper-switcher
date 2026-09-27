@@ -1,0 +1,67 @@
+/* Nord list theme for small prompts (monitor selection, etc.) */
+
+* {
+    background-color: transparent;
+    text-color: #d8dee9;
+    border: 0px;
+    margin: 0px;
+    padding: 0px;
+    spacing: 0px;
+}
+
+window {
+    background-color: rgba(46, 52, 64, 0.97);
+    border: 1px;
+    border-color: #4c566a;
+    border-radius: 10px;
+    padding: 8px;
+    width: 400px;
+    location: center;
+    anchor: center;
+    children: [ mainbox ];
+}
+
+mainbox {
+    padding: 6px;
+    background-color: transparent;
+    children: [ inputbar, listview ];
+}
+
+inputbar {
+    padding: 4px 8px;
+}
+
+prompt {
+    text-color: #88c0d0;
+}
+
+entry {
+    text-color: #eceff4;
+    background-color: transparent;
+}
+
+listview {
+    lines: 6;
+    dynamic: true;
+    spacing: 0;
+    padding: 4px;
+    background-color: transparent;
+}
+
+element {
+    padding: 8px;
+    border-radius: 6px;
+    background-color: transparent;
+    children: [ element-text ];
+}
+
+element selected {
+    background-color: #4c566a;
+}
+
+element-text {
+    enabled: true;
+    font: "Noto Sans 13";
+    text-color: #d8dee9;
+    padding: 0px;
+}
