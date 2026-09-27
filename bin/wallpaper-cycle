@@ -4,6 +4,41 @@ set -euo pipefail
 
 STATE="$HOME/.cache/wallpaper-cycle-idx"
 
+# apply the image on whatever desktop session is running
+apply_wallpaper() {
+  local de="${XDG_CURRENT_DESKTOP:-}" img="$1"
+  case "$de" in
+    *GNOME*|*ubuntu*|*Cinnamon*|*Budgie*|*Pantheon*)
+      command -v gsettings >/dev/null || return 1
+      gsettings set org.gnome.desktop.background picture-uri "file://$img" 2>/dev/null || return 1
+      gsettings set org.gnome.desktop.background picture-uri-dark "file://$img" 2>/dev/null || true
+      return ;;
+    *XFCE*)
+      command -v xfconf-query >/dev/null || return 1
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-path -s "$img" 2>/dev/null || return 1
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-style -s 5 2>/dev/null || true
+      return ;;
+  esac
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
+    hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
+    return
+  fi
+  if [ -n "${SWAYSOCK:-}" ] && command -v swaybg >/dev/null; then
+    pkill -x swaybg 2>/dev/null || true
+    swaybg -i "$img" -m fill &
+    disown
+    return
+  fi
+  if command -v plasma-apply-wallpaperimage >/dev/null; then
+    plasma-apply-wallpaperimage "$img" 2>/dev/null && return || return 1
+  fi
+  if command -v feh >/dev/null; then
+    feh --bg-fill "$img" 2>/dev/null && return || return 1
+  fi
+  return 1
+}
+
 mapfile -t IMGS < <(
   find "$HOME/Desktop" "$HOME/.local/share/backgrounds" "$HOME/.local/share/wallpapers" \
        "$HOME/Pictures/wallpapers" "$HOME/Pictures/Wallpapers" -maxdepth 2 -type f \
@@ -26,10 +61,10 @@ case "$mode" in
 esac
 [ -z "${usage:-}" ] || { echo "Usage: wallpaper-cycle next|prev|random|<number>"; exit 1; }
 
-if /usr/bin/plasma-apply-wallpaperimage "${IMGS[$idx]}" 2>/dev/null; then
+if apply_wallpaper "${IMGS[$idx]}"; then
   echo "${IMGS[$idx]}"
   notify-send -a wallpaper -i "${IMGS[$idx]}" "Wallpaper $((idx+1))/$N" "${IMGS[$idx]##*/}" 2>/dev/null || true
 else
-  echo "plasma-apply-wallpaperimage failed" >&2
+  echo "failed to apply wallpaper" >&2
   exit 1
 fi

@@ -5,6 +5,43 @@ IFS=$'\n'
 
 DEST="$HOME/.local/share/wallpapers"
 ADD_LABEL="Add new wallpaper..."
+THUMB_SIZE=160
+THUMB_DIR="$HOME/.cache/wallpaper-pick/thumbs"
+
+# apply the image on whatever desktop session is running
+apply_wallpaper() {
+  local de="${XDG_CURRENT_DESKTOP:-}" img="$1"
+  case "$de" in
+    *GNOME*|*ubuntu*|*Cinnamon*|*Budgie*|*Pantheon*)
+      command -v gsettings >/dev/null || return 1
+      gsettings set org.gnome.desktop.background picture-uri "file://$img" 2>/dev/null || return 1
+      gsettings set org.gnome.desktop.background picture-uri-dark "file://$img" 2>/dev/null || true
+      return ;;
+    *XFCE*)
+      command -v xfconf-query >/dev/null || return 1
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-path -s "$img" 2>/dev/null || return 1
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-style -s 5 2>/dev/null || true
+      return ;;
+  esac
+  if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && command -v hyprctl >/dev/null; then
+    hyprctl hyprpaper preload "$img" >/dev/null 2>&1 || true
+    hyprctl hyprpaper wallpaper ",$img" 2>/dev/null || return 1
+    return
+  fi
+  if [ -n "${SWAYSOCK:-}" ] && command -v swaybg >/dev/null; then
+    pkill -x swaybg 2>/dev/null || true
+    swaybg -i "$img" -m fill &
+    disown
+    return
+  fi
+  if command -v plasma-apply-wallpaperimage >/dev/null; then
+    plasma-apply-wallpaperimage "$img" 2>/dev/null && return || return 1
+  fi
+  if command -v feh >/dev/null; then
+    feh --bg-fill "$img" 2>/dev/null && return || return 1
+  fi
+  return 1
+}
 
 # kill any stale rofi from previous runs
 for p in $(pgrep -x rofi || true); do kill "$p" 2>/dev/null || true; done
@@ -16,6 +53,65 @@ mapfile -t IMGS < <(
        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
           -o -iname '*.bmp' -o -iname '*.gif' \) 2>/dev/null | LC_ALL=C sort -u
 )
+
+# cached thumbnails with the filename baked in (needs python3 + Pillow)
+THUMBS=0
+if [ ${#IMGS[@]} -gt 0 ] && python3 -c 'import PIL' 2>/dev/null; then
+  [ -d "$THUMB_DIR" ] || mkdir -p "$THUMB_DIR"
+  if python3 - "$THUMB_DIR" "$THUMB_SIZE" "${IMGS[@]}" <<'PY' 2>/dev/null; then
+import hashlib, os, sys
+from PIL import Image, ImageDraw, ImageFont
+
+cache, size = sys.argv[1], int(sys.argv[2])
+
+font = None
+for p in ("/usr/share/fonts/noto/NotoSans-Regular.ttf",
+          "/usr/share/fonts/TTF/DejaVuSans.ttf",
+          "/usr/share/fonts/dejavu/DejaVuSans.ttf"):
+    if os.path.exists(p):
+        font = ImageFont.truetype(p, max(10, size // 12))
+        break
+if font is None:
+    font = ImageFont.load_default(size)
+
+strip = max(14, size // 5)
+
+for path in sys.argv[3:]:
+    key = hashlib.sha256(path.encode()).hexdigest()[:16]
+    out = os.path.join(cache, key + ".png")
+    try:
+        if os.path.getmtime(out) >= os.path.getmtime(path):
+            continue
+    except OSError:
+        pass
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    s = min(w, h)
+    im = im.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2))
+    im = im.resize((size, size), Image.LANCZOS).convert("RGBA")
+    ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    d.rectangle((0, size - strip, size, size), fill=(10, 12, 16, 170))
+    full = os.path.basename(path)
+    name = full
+    while name and font.getlength(name + "\u2026") > size - 14:
+        name = name[:-1]
+    if name != full:
+        name += "\u2026"
+    d.text((size // 2, size - strip // 2), name, font=font,
+           fill=(236, 239, 244, 255), anchor="mm")
+    Image.alpha_composite(im, ov).convert("RGB").save(out)
+PY
+    THUMBS=1
+  fi
+fi
+
+thumb_of() {  # cached thumbnail path (or the file itself without Pillow)
+  local f="$1" key
+  [ "$THUMBS" = 1 ] || { echo "$f"; return; }
+  key=$(printf '%s' "$f" | sha256sum | cut -c1-16)
+  echo "$THUMB_DIR/$key.png"
+}
 
 add_file() {  # copy an image into the library
   local src="$1" dest name ext base i
@@ -61,7 +157,7 @@ sel="$(
   {
     printf '%s\0icon\x1flist-add\n' "$ADD_LABEL"
     for f in "${IMGS[@]}"; do
-      printf '%s\0icon\x1f%s\n' "$(basename "$f")" "$f"
+      printf '%s\0icon\x1f%s\n' "$(basename "$f")" "$(thumb_of "$f")"
     done
   } | rofi -dmenu -i -p "Wallpaper" -show-icons 2>/dev/null
 )"
@@ -79,6 +175,7 @@ for f in "${IMGS[@]}"; do
   if [ "$(basename "$f")" = "$sel" ]; then picked="$f"; break; fi
 done
 if [ -n "$picked" ]; then
-  /usr/bin/plasma-apply-wallpaperimage "$picked" 2>/dev/null \
-    && notify-send -a wallpaper -i "$picked" "Wallpaper" "${picked##*/}" 2>/dev/null || true
+  if apply_wallpaper "$picked"; then
+    notify-send -a wallpaper -i "$picked" "Wallpaper" "${picked##*/}" 2>/dev/null || true
+  fi
 fi

@@ -1,6 +1,8 @@
 # Wallpaper Switcher
 
-Quick wallpaper switcher & picker for **KDE Plasma (Wayland/X11)** using **rofi**.
+Quick wallpaper switcher & picker for **KDE Plasma, GNOME, Hyprland, Sway, XFCE + more**
+using **rofi** — it auto-detects your desktop session and applies the wallpaper
+with the right tool (gsettings / xfconf / hyprctl / swaybg / plasma-apply / feh).
 
 Pick a wallpaper visually with a **Nord-themed grid** (Alt+Tab style), cycle with
 terminal commands or hotkeys, and add new images directly from within the picker —
@@ -12,7 +14,10 @@ no system settings needed.
 
 ## Features
 
-- **Visual picker** — a Nord-themed rofi grid with actual image thumbnails (scrollable)
+- **Visual picker** — a Nord-themed rofi grid where each tile is the wallpaper
+  itself (image fills the tile, filename overlaid small at the bottom; scrollable)
+- **Multi-DE support** — detects the session (GNOME, XFCE, Hyprland, Sway, KDE,
+  …) and applies via the matching tool, with a `feh` fallback
 - **Alt+Tab-style switcher** — navigate with arrows + Enter, or click
 - **Add images right in the picker** — multi-select a file, it is copied into your
   wallpaper library and the grid refreshes automatically
@@ -26,15 +31,16 @@ no system settings needed.
 | Package | Reason |
 |---|---|
 | `rofi` | picker UI (v2 recommended) |
-| `plasma-workspace` (`plasma-apply-wallpaperimage`) | applies the wallpaper |
 | `zenity` | file picker for the add flow |
 | `file` | image type validation |
 | `libnotify` (`notify-send`) | notifications |
+| `python-pillow` | optional — baked filename captions + thumbnails in the picker |
+| desktop tool | one of: `gsettings`, `xfconf`, `hyprctl`+`hyprpaper`, `swaybg`, `plasma-apply-wallpaperimage`, `feh` (picked automatically) |
 
-Install on Arch:
+Install on Arch (KDE example):
 
 ```bash
-sudo pacman -S rofi plasma-workspace zenity file libnotify
+sudo pacman -S rofi zenity file libnotify python-pillow plasma-workspace
 ```
 
 ## Install
@@ -76,8 +82,8 @@ makepkg -si
 ```
 
 The package installs to `/usr` (scripts, system theme, launcher); it depends on
-`rofi`, `plasma-workspace`, `zenity`, `file`, `libnotify`. Packaging sources live
-in `packaging/aur/`.
+`rofi`, `zenity`, `file`, `libnotify` (optionally `python-pillow` for picker
+captions). Packaging sources live in `packaging/aur/`.
 
 ## Usage
 

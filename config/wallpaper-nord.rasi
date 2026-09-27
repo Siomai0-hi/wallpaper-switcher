@@ -1,4 +1,4 @@
-/* Nord theme for rofi - dark, Alt+Tab-style grid switcher */
+/* Nord theme for rofi - dark, image-first grid switcher */
 
 * {
     background-color: transparent;
@@ -43,9 +43,9 @@ entry {
 }
 
 listview {
-    lines: 4;
-    columns: 5;
-    spacing: 10px;
+    lines: 3;
+    columns: 10;
+    spacing: 8px;
     padding: 4px;
     scrollbar: true;
     dynamic: false;
@@ -54,28 +54,31 @@ listview {
 
 element {
     background-color: transparent;
-    padding: 5px;
+    padding: 0px;
     border-radius: 8px;
+    children: [ element-icon ];
 }
 
 element selected {
-    background-color: #4c566a;
-    border: 1px;
+    background-color: transparent;
+    border: 2px;
     border-color: #88c0d0;
     border-radius: 8px;
 }
 
+/* thumbnails fill the whole tile; the filename is baked into them */
 element-icon {
-    size: 130px;
+    size: 150px;
     background-color: #3b4252;
-    border-radius: 8px;
-    padding: 4px;
+    padding: 0px;
+    border-radius: 6px;
 }
 
 element-text {
     font: "Noto Sans 12";
     text-color: #d8dee9;
     padding: 2px 0 0 0;
+    enabled: false;
 }
 
 element-text selected {
