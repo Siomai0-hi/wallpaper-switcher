@@ -18,4 +18,4 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Lint scripts
-        run: shellcheck -S warning bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-add install.sh
+        run: shellcheck -S warning bin/wallpaper-pick bin/wallpaper-cycle bin/wallpaper-fav bin/wallpaper-rotate bin/wallpaper-add install.sh

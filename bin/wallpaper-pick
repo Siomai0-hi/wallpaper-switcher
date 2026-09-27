@@ -23,6 +23,7 @@ ROT_ON_LABEL="Auto-rotate: On"
 ROT_OFF_LABEL="Auto-rotate: Off"
 
 mkdir -p "$CONF_DIR" "$CTRL_DIR"
+# shellcheck disable=SC1090   # config is a shell-sourced optional file
 [ -f "$CFG" ] && . "$CFG"
 
 # --- apply the image on whatever desktop session is running ------------------

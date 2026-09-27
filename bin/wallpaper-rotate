@@ -14,7 +14,8 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher"
 CFG="$CONF_DIR/config"
 UNIT="wallpaper-rotate.timer"
 
-[ -f "$CFG" ] && . "$CFG"   # FAV_ONLY=1 rotates favourites only
+# shellcheck disable=SC1090   # FAV_ONLY=1 rotates favourites only
+[ -f "$CFG" ] && . "$CFG"
 
 case "${1:-run}" in
   on)

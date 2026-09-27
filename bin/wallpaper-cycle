@@ -9,7 +9,8 @@ CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpaper-switcher"
 CFG="$CONF_DIR/config"
 FAV_FILE="$CONF_DIR/favorites"
 
-[ -f "$CFG" ] && . "$CFG"   # optional PYWAL / MONITOR / FAV_ONLY settings
+# shellcheck disable=SC1090   # optional PYWAL / MONITOR / FAV_ONLY settings
+[ -f "$CFG" ] && . "$CFG"
 
 # apply the image on whatever desktop session is running
 apply_wallpaper() {  # $1 image, $2 optional monitor name (swww only)
